@@ -4,23 +4,26 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import static ricochetrobots.RicochetUtil.*;
 
 /**
  *
  * @author Philipp
  */
-public class RobotsSolver {
+public class RicochetSolver {
     private final static boolean VERBOSE = true, DIRECTION_PRUNING = true;
     private final List<Integer> result = new LinkedList<>();
     private final TranspositionTable table;
     private final TranspositionEntry entry = new TranspositionEntry();
-    private final int[] targetDistance = new int[RobotsState.SIZE * RobotsState.SIZE];
+    private final int[] targetDistance = new int[SIZE * SIZE];
     private long nodes;
-    private final int[] bots = new int[RobotsState.NUM_BOTS];
+    private final int[] bots = new int[NUM_BOTS];
     private int targetBot;
-    private final RobotsState state;
+    private final RicochetState state;
+    private final RicochetZobrist zobrist = new RicochetZobrist();
+    private long hash;
 
-    public RobotsSolver(RobotsState state, TranspositionTable table) {
+    public RicochetSolver(RicochetState state, TranspositionTable table) {
         this.state = state;
         this.table = table;
     }
@@ -28,9 +31,15 @@ public class RobotsSolver {
     public List<Integer> solve(int targetBot, int targetSquare) {
         long millis = System.currentTimeMillis();
         nodes = 0;
+        prunes = nonprunes = 0;
+        ttHits = ttNonHits = 0;
         this.targetBot = targetBot;
         populateTargetDistance(targetSquare);
-        state.initHashes(new Random(17), targetBot);
+        zobrist.initHashes(new Random(17), targetBot);
+        hash = 0;
+        for (int bot : bots) {
+            hash ^= zobrist.botSquareHash(bot, state.botSquare(bot));
+        }
         table.clear();
         result.clear();
         for (int bot = 0; bot < bots.length; bot++) {
@@ -50,20 +59,17 @@ public class RobotsSolver {
         int tableCount = table.count();
         println("used " + tableCount + " of " + table.size() + " available entries. (" + String.format("%s", (double)tableCount / table.size()) + " fillrate)");
         if(DIRECTION_PRUNING) {
-            println("pruned directions amount " + prunes);
+            println("pruned directions amount " + prunes + "/" + (prunes + nonprunes));
         }
+            println("tthits " + ttHits + "/" + (ttHits + ttNonHits));
         return result;
     }
 
     private boolean search(int remainingDepth, int pruneDirectionsFlags) {
         nodes++;
-        int minTargetDistance = targetDistance[state.botSquare(targetBot)];
+        int minTargetDistance = targetDistance[state.botSquare(targetBot)]; //targetDistance[state.botSquare(targetBot)];
         if(remainingDepth < minTargetDistance) {
             //early exit
-            return false;
-        }
-        long hash = state.getHash();
-        if (table.load(hash, entry) && entry.depth >= remainingDepth) {
             return false;
         }
         table.saveDepth(hash, remainingDepth);
@@ -83,7 +89,8 @@ public class RobotsSolver {
         return false;
     }
 
-    int prunes = 0;
+    long ttHits = 0, ttNonHits = 0;
+    long prunes = 0, nonprunes = 0;
     private boolean searchBotMoves(int currentBot, int remainingDepth, int pruneDirectionsFlags) {
         int increment, startDirection;
         if(DIRECTION_PRUNING && ((2 << currentBot) & pruneDirectionsFlags) != 0) {
@@ -93,11 +100,21 @@ public class RobotsSolver {
         } else {
             increment = 1;
             startDirection = 0;
+            nonprunes++;
         }
-        for (int direction = startDirection; direction < RobotsState.NUM_DIRECTIONS; direction += increment) {
+        for (int direction = startDirection; direction < NUM_DIRECTIONS; direction += increment) {
             int from = state.botSquare(currentBot);
             int to = state.findMoveLimit(from, direction);
             if (from != to) {//skip if bot won't move
+                long childHash = hash ^ zobrist.botSquareHash(currentBot, from) ^ zobrist.botSquareHash(currentBot, to);
+                if (table.load(childHash, entry) && entry.depth >= remainingDepth - 1) {
+                    ttHits++;
+                    continue;
+                }
+                ttNonHits++;
+                
+                long prevHash = hash;
+                hash = childHash;
                 state.forceMove(currentBot, from, to);
                 
                 int nextPruneDirectionsFlags;
@@ -113,6 +130,7 @@ public class RobotsSolver {
                 }
                 
                 boolean solved = search(remainingDepth - 1, nextPruneDirectionsFlags);
+                hash = prevHash;
                 state.forceMove(currentBot, to, from);//undo move
                 if (solved) {
                     result.add(0, direction);
@@ -132,11 +150,11 @@ public class RobotsSolver {
     
     private void chainUpdateDistance(int square) {
         int nextDistance = targetDistance[square] + 1;
-        for (int direction = 0; direction < RobotsState.NUM_DIRECTIONS; direction++) {
+        for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
             int target = state.findWall(square, direction);
             int currentSquare = square;
             while(currentSquare != target) {
-                currentSquare += RobotsState.DIRECTION_OFFSETS[direction];
+                currentSquare += DIRECTION_OFFSETS[direction];
                 if(targetDistance[currentSquare] > nextDistance) {
                     targetDistance[currentSquare] = nextDistance;
                     chainUpdateDistance(currentSquare);

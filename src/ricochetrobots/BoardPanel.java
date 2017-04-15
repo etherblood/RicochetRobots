@@ -6,6 +6,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import javax.swing.JPanel;
+import static ricochetrobots.RicochetUtil.*;
 
 /**
  *
@@ -13,12 +14,12 @@ import javax.swing.JPanel;
  */
 public class BoardPanel extends JPanel {
 
-    private final RobotsState state;
+    private final RicochetState state;
     private final Color[] colors;
     public int target = -1;
     public Color targetColor = Color.WHITE;
 
-    public BoardPanel(RobotsState state, Color[] colors) {
+    public BoardPanel(RicochetState state, Color[] colors) {
         this.state = state;
         this.colors = colors;
     }
@@ -31,19 +32,19 @@ public class BoardPanel extends JPanel {
         t.scale(1, -1);
         g2d.transform(t);
         
-        float tileWidth = getWidth() / RobotsState.SIZE;
-        float tileHeight = getHeight() / RobotsState.SIZE;
+        float tileWidth = getWidth() / SIZE;
+        float tileHeight = getHeight() / SIZE;
         
-        for (int x = 0; x < RobotsState.SIZE; x++) {
-            for (int y = 0; y < RobotsState.SIZE; y++) {
-                int square = RobotsState.square(x, y);
+        for (int x = 0; x < SIZE; x++) {
+            for (int y = 0; y < SIZE; y++) {
+                int square = square(x, y);
                 if(square == target) {
                     g.setColor(targetColor);
-                    g.fillRect((int)(RobotsState.x(square) * tileWidth), (int)(RobotsState.y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
+                    g.fillRect((int)(x(square) * tileWidth), (int)(y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
                 } else {
                     g.setColor(Color.LIGHT_GRAY);
                 }
-                if (state.isWall(square, RobotsState.DOWN)) {
+                if (state.isWall(square, DOWN)) {
                     g2d.setStroke(new BasicStroke(3));
                     g2d.setColor(Color.BLACK);
                 } else {
@@ -51,7 +52,7 @@ public class BoardPanel extends JPanel {
                     g2d.setColor(Color.DARK_GRAY);
                 }
                 g.drawLine((int) (x * tileWidth), (int) (y * tileHeight), (int) ((x + 1) * tileWidth), (int) (y * tileHeight));
-                if (state.isWall(square, RobotsState.UP)) {
+                if (state.isWall(square, UP)) {
                     g2d.setStroke(new BasicStroke(3));
                     g2d.setColor(Color.BLACK);
                 } else {
@@ -59,7 +60,7 @@ public class BoardPanel extends JPanel {
                     g2d.setColor(Color.DARK_GRAY);
                 }
                 g.drawLine((int) (x * tileWidth), (int) ((y + 1) * tileHeight), (int) ((x + 1) * tileWidth), (int) ((y + 1) * tileHeight));
-                if (state.isWall(square, RobotsState.LEFT)) {
+                if (state.isWall(square, LEFT)) {
                     g2d.setStroke(new BasicStroke(3));
                     g2d.setColor(Color.BLACK);
                 } else {
@@ -67,7 +68,7 @@ public class BoardPanel extends JPanel {
                     g2d.setColor(Color.DARK_GRAY);
                 }
                 g.drawLine((int) (x * tileWidth), (int) (y * tileHeight), (int) (x * tileWidth), (int) ((y + 1) * tileHeight));
-                if (state.isWall(square, RobotsState.RIGHT)) {
+                if (state.isWall(square, RIGHT)) {
                     g2d.setStroke(new BasicStroke(3));
                     g2d.setColor(Color.BLACK);
                 } else {
@@ -78,10 +79,10 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        for (int bot = 0; bot < RobotsState.NUM_BOTS; bot++) {
+        for (int bot = 0; bot < NUM_BOTS; bot++) {
             g.setColor(colors[bot]);
             int square = state.botSquare(bot);
-            g.fillOval((int)(RobotsState.x(square) * tileWidth), (int)(RobotsState.y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
+            g.fillOval((int)(x(square) * tileWidth), (int)(y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
         }
     }
 

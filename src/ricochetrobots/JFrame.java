@@ -2,6 +2,7 @@ package ricochetrobots;
 
 import java.awt.Color;
 import java.util.List;
+import static ricochetrobots.RicochetUtil.*;
 
 /**
  *
@@ -9,9 +10,9 @@ import java.util.List;
  */
 public class JFrame extends javax.swing.JFrame {
 
-    private final String[] botTexts = new String[RobotsState.NUM_BOTS];
-    private final String[] directionTexts = new String[RobotsState.NUM_DIRECTIONS];
-    private final Color[] colors = new Color[RobotsState.NUM_BOTS];
+    private final String[] botTexts = new String[NUM_BOTS];
+    private final String[] directionTexts = new String[NUM_DIRECTIONS];
+    private final Color[] colors = new Color[NUM_BOTS];
 
     private final int red = 0;
     private final int blue = 1;
@@ -26,10 +27,10 @@ public class JFrame extends javax.swing.JFrame {
         botTexts[green] = "green ";
         botTexts[silver] = "silver ";
 
-        directionTexts[RobotsState.UP] = "up";
-        directionTexts[RobotsState.LEFT] = "left";
-        directionTexts[RobotsState.DOWN] = "down";
-        directionTexts[RobotsState.RIGHT] = "right";
+        directionTexts[UP] = "up";
+        directionTexts[LEFT] = "left";
+        directionTexts[DOWN] = "down";
+        directionTexts[RIGHT] = "right";
 
         colors[red] = Color.RED;
         colors[blue] = Color.BLUE;
@@ -44,17 +45,18 @@ public class JFrame extends javax.swing.JFrame {
     public JFrame() {
         initComponents();
 
-        RobotsState state = new RobotsState();
+        RicochetState state = new BitmaskRicochetState();
 
         int targetBot = blue;
         int targetSquare = setup5bots22movesForBlue(state);
 
         new Thread(() -> {
-            RobotsSolver solver = new RobotsSolver(state, new TranspositionTable(26));//26 -> 1 GB
+            RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(26));//26 -> 1 GB
             List<Integer> solve = solver.solve(targetBot, targetSquare);
             for (int i = 0; i < solve.size(); i += 2) {
                 System.out.println(botTexts[solve.get(i)] + directionTexts[solve.get(i + 1)]);
             }
+            System.exit(0);
         }).start();
 
         BoardPanel panel = new BoardPanel(state, colors);
@@ -65,68 +67,68 @@ public class JFrame extends javax.swing.JFrame {
         panel.invalidate();
     }
 
-    private int setup5bots22movesForBlue(RobotsState state) {
-        state.addBot(red, RobotsState.square(2, 14));
-        state.addBot(blue, RobotsState.square(11, 2));
-        state.addBot(yellow, RobotsState.square(2, 1));
-        state.addBot(green, RobotsState.square(0, 3));
-        state.addBot(silver, RobotsState.square(2, 2));
+    private int setup5bots22movesForBlue(RicochetState state) {
+        state.addBot(red, square(2, 14));
+        state.addBot(blue, square(11, 2));
+        state.addBot(yellow, square(2, 1));
+        state.addBot(green, square(0, 3));
+        state.addBot(silver, square(2, 2));
 
-        state.setWall(RobotsState.square(4, 0), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(9, 0), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(14, 0), RobotsState.UP);
-        state.setWall(RobotsState.square(2, 1), RobotsState.UP);
-        state.setWall(RobotsState.square(2, 1), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(13, 1), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(10, 2), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(11, 2), RobotsState.UP);
-        state.setWall(RobotsState.square(0, 3), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(1, 3), RobotsState.UP);
-        state.setWall(RobotsState.square(15, 3), RobotsState.UP);
-        state.setWall(RobotsState.square(0, 4), RobotsState.UP);
-        state.setWall(RobotsState.square(5, 4), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(5, 5), RobotsState.UP);
+        state.setWall(square(4, 0), RIGHT);
+        state.setWall(square(9, 0), RIGHT);
+        state.setWall(square(14, 0), UP);
+        state.setWall(square(2, 1), UP);
+        state.setWall(square(2, 1), RIGHT);
+        state.setWall(square(13, 1), RIGHT);
+        state.setWall(square(10, 2), RIGHT);
+        state.setWall(square(11, 2), UP);
+        state.setWall(square(0, 3), RIGHT);
+        state.setWall(square(1, 3), UP);
+        state.setWall(square(15, 3), UP);
+        state.setWall(square(0, 4), UP);
+        state.setWall(square(5, 4), RIGHT);
+        state.setWall(square(5, 5), UP);
 
-        state.setWall(RobotsState.square(5, 6), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(7, 6), RobotsState.UP);
-        state.setWall(RobotsState.square(8, 6), RobotsState.UP);
-        state.setWall(RobotsState.square(10, 6), RobotsState.UP);
-        state.setWall(RobotsState.square(13, 6), RobotsState.UP);
-        state.setWall(RobotsState.square(13, 6), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(3, 7), RobotsState.UP);
-        state.setWall(RobotsState.square(3, 7), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(6, 7), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(8, 7), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(10, 7), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(6, 3), RobotsState.UP);
+        state.setWall(square(5, 6), RIGHT);
+        state.setWall(square(7, 6), UP);
+        state.setWall(square(8, 6), UP);
+        state.setWall(square(10, 6), UP);
+        state.setWall(square(13, 6), UP);
+        state.setWall(square(13, 6), RIGHT);
+        state.setWall(square(3, 7), UP);
+        state.setWall(square(3, 7), RIGHT);
+        state.setWall(square(6, 7), RIGHT);
+        state.setWall(square(8, 7), RIGHT);
+        state.setWall(square(10, 7), RIGHT);
+        state.setWall(square(6, 3), UP);
 
-        state.setWall(RobotsState.square(7, 8), RobotsState.LEFT);
-        state.setWall(RobotsState.square(7, 8), RobotsState.UP);
-        state.setWall(RobotsState.square(8, 8), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(8, 8), RobotsState.UP);
-        state.setWall(RobotsState.square(3, 9), RobotsState.DOWN);
-        state.setWall(RobotsState.square(3, 9), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(14, 9), RobotsState.LEFT);
-        state.setWall(RobotsState.square(14, 9), RobotsState.DOWN);
-        state.setWall(RobotsState.square(11, 10), RobotsState.UP);
-        state.setWall(RobotsState.square(11, 10), RobotsState.LEFT);
-        state.setWall(RobotsState.square(1, 11), RobotsState.UP);
-        state.setWall(RobotsState.square(1, 11), RobotsState.LEFT);
+        state.setWall(square(7, 8), LEFT);
+        state.setWall(square(7, 8), UP);
+        state.setWall(square(8, 8), RIGHT);
+        state.setWall(square(8, 8), UP);
+        state.setWall(square(3, 9), DOWN);
+        state.setWall(square(3, 9), RIGHT);
+        state.setWall(square(14, 9), LEFT);
+        state.setWall(square(14, 9), DOWN);
+        state.setWall(square(11, 10), UP);
+        state.setWall(square(11, 10), LEFT);
+        state.setWall(square(1, 11), UP);
+        state.setWall(square(1, 11), LEFT);
 
-        state.setWall(RobotsState.square(2, 14), RobotsState.LEFT);
-        state.setWall(RobotsState.square(2, 14), RobotsState.DOWN);
-        state.setWall(RobotsState.square(0, 14), RobotsState.DOWN);
-        state.setWall(RobotsState.square(6, 15), RobotsState.LEFT);
-        state.setWall(RobotsState.square(11, 15), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(13, 14), RobotsState.UP);
-        state.setWall(RobotsState.square(13, 14), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(9, 12), RobotsState.RIGHT);
-        state.setWall(RobotsState.square(9, 12), RobotsState.DOWN);
-        state.setWall(RobotsState.square(15, 10), RobotsState.UP);
-        state.setWall(RobotsState.square(6, 12), RobotsState.UP);
-        state.setWall(RobotsState.square(6, 12), RobotsState.RIGHT);
+        state.setWall(square(2, 14), LEFT);
+        state.setWall(square(2, 14), DOWN);
+        state.setWall(square(0, 14), DOWN);
+        state.setWall(square(6, 15), LEFT);
+        state.setWall(square(11, 15), RIGHT);
+        state.setWall(square(13, 14), UP);
+        state.setWall(square(13, 14), RIGHT);
+        state.setWall(square(9, 12), RIGHT);
+        state.setWall(square(9, 12), DOWN);
+        state.setWall(square(15, 10), UP);
+        state.setWall(square(6, 12), UP);
+        state.setWall(square(6, 12), RIGHT);
 
-        return RobotsState.square(9, 12);
+        return square(9, 12);
     }
 
     /**
