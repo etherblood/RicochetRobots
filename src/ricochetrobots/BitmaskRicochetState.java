@@ -17,6 +17,11 @@ public class BitmaskRicochetState implements RicochetState {
     private final int[] rowBlocked = new int[SIZE * SIZE];
 
     public BitmaskRicochetState() {
+        if(SIZE != 16) {
+            //assumptions were made...
+            //code probably needs to be adjusted before being usable for other sizes
+            throw new IllegalStateException("only boardsize of 16x16 supported");
+        }
         clear();
     }
 
@@ -63,21 +68,23 @@ public class BitmaskRicochetState implements RicochetState {
         }
         int x = x(square);
         int y = y(square);
-        if (isHorizontal(direction)) {
-            int upperMask = ~0 << x;
-            for (int i = 0; i < x; i++) {
-                rowBlocked[square(i, y)] |= upperMask;
-            }
-            for (int i = x; i < SIZE; i++) {
-                rowBlocked[square(i, y)] |= ~upperMask;
-            }
-        } else {
+        if (direction == DOWN) {
             int upperMask = ~0 << y;
             for (int i = 0; i < y; i++) {
                 colBlocked[square(x, i)] |= upperMask;
             }
+            int lowerMask = ~upperMask;
             for (int i = y; i < SIZE; i++) {
-                colBlocked[square(x, i)] |= ~upperMask;
+                colBlocked[square(x, i)] |= lowerMask;
+            }
+        } else {
+            int upperMask = ~0 << x;
+            for (int i = 0; i < x; i++) {
+                rowBlocked[square(i, y)] |= upperMask;
+            }
+            int lowerMask = ~upperMask;
+            for (int i = x; i < SIZE; i++) {
+                rowBlocked[square(i, y)] |= lowerMask;
             }
         }
     }
@@ -118,21 +125,26 @@ public class BitmaskRicochetState implements RicochetState {
         }
     }
 
-    private boolean isHorizontal(int direction) {
-        return (direction & 1) != 0;
-    }
-
     int lowerMove(int from, int obstacles) {
         if (from == 0) {
             return 0;
         }
         int shiftedObstacles = obstacles << (Integer.SIZE - from);
-//        int shiftedObstacles = (obstacles << Short.SIZE) << (Short.SIZE - from);//can be used instead of if&statement above
         if (shiftedObstacles == 0) {
             return 0;
         }
         return from - Integer.numberOfLeadingZeros(shiftedObstacles);
     }
+
+//    int lowerMove_branchless(int from, int obstacles) {
+//        int shiftedObstacles = (~obstacles << Short.SIZE) << (Short.SIZE - from);
+//        return from - Integer.numberOfLeadingZeros(~shiftedObstacles);
+//    }
+//
+//    int lowerMove_branchless2(int from, int obstacles) {
+//        int shiftedObstacles = (int) ((long)~obstacles << (Integer.SIZE - from));
+//        return from - Integer.numberOfLeadingZeros(~shiftedObstacles);
+//    }
 
     int upperMove(int from, int obstacles) {
         int shiftedObstacles = obstacles >>> from + 1;
@@ -141,6 +153,11 @@ public class BitmaskRicochetState implements RicochetState {
         }
         return from + Integer.numberOfTrailingZeros(shiftedObstacles);
     }
+
+//    int upperMove_branchless(int from, int obstacles) {
+//        int shiftedObstacles = ((1 << SIZE) | obstacles) >>> from + 1;
+//        return from + Integer.numberOfTrailingZeros(shiftedObstacles);
+//    }
 
     @Override
     public int botSquare(int bot) {

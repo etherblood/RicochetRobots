@@ -52,9 +52,11 @@ public class JFrame extends javax.swing.JFrame {
 
         new Thread(() -> {
             RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(26));//26 -> 1 GB
-            List<Integer> solve = solver.solve(targetBot, targetSquare);
+            List<RicochetMove> solve = solver.solve(targetBot, targetSquare);
+            for (RicochetMove move : solve) {
+                System.out.println(botTexts[move.getBot()] + directionTexts[move.getDirection()]);
+            }
             for (int i = 0; i < solve.size(); i += 2) {
-                System.out.println(botTexts[solve.get(i)] + directionTexts[solve.get(i + 1)]);
             }
             System.exit(0);
         }).start();

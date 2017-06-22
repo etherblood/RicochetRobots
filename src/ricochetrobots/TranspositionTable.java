@@ -37,6 +37,21 @@ public class TranspositionTable {
         table[(int)hash & mask] = hash ^ depth;
     }
     
+    public void saveDepthIfEmpty(long hash, int depth) {
+        int index = (int)hash & mask;
+        if(table[index] == 0) {
+            table[index] = hash ^ depth;
+        }
+    }
+    
+    public void saveDepthIfEmptyOrLess(long hash, int depth) {
+        int index = (int)hash & mask;
+        long value = table[index];
+        if(value == 0 || (value ^ hash) < depth) {
+            table[index] = hash ^ depth;
+        }
+    }
+    
     public void clear() {
         Arrays.fill(table, 0);
     }

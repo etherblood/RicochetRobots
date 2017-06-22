@@ -12,12 +12,13 @@ import static ricochetrobots.RicochetUtil.*;
  */
 public class RicochetSolver {
     private final static boolean VERBOSE = true, DIRECTION_PRUNING = true;
-    private final List<Integer> result = new LinkedList<>();
+    
+    private List<RicochetMove> result;
     private final TranspositionTable table;
     private final TranspositionEntry entry = new TranspositionEntry();
     private final int[] targetDistance = new int[SIZE * SIZE];
     private long nodes;
-    private final int[] bots = new int[NUM_BOTS];
+    private final int[] botsOrder = new int[NUM_BOTS];
     private int targetBot;
     private final RicochetState state;
     private final RicochetZobrist zobrist = new RicochetZobrist();
@@ -28,7 +29,7 @@ public class RicochetSolver {
         this.table = table;
     }
     
-    public List<Integer> solve(int targetBot, int targetSquare) {
+    public List<RicochetMove> solve(int targetBot, int targetSquare) {
         long millis = System.currentTimeMillis();
         nodes = 0;
         prunes = nonprunes = 0;
@@ -36,17 +37,16 @@ public class RicochetSolver {
         this.targetBot = targetBot;
         populateTargetDistance(targetSquare);
         zobrist.initHashes(new Random(17), targetBot);
+        table.clear();
         hash = 0;
-        for (int bot : bots) {
+        for (int bot = 0; bot < NUM_BOTS; bot++) {
+            botsOrder[bot] = bot;
             hash ^= zobrist.botSquareHash(bot, state.botSquare(bot));
         }
-        table.clear();
-        result.clear();
-        for (int bot = 0; bot < bots.length; bot++) {
-            bots[bot] = bot;
-        }
-        bots[targetBot] = 0;
-        bots[0] = targetBot;
+        botsOrder[targetBot] = 0;
+        botsOrder[0] = targetBot;
+        
+        result = new LinkedList<>();
         int depth = 0;
         while (!search(depth, 0)) {
             println("no solution for depth " + depth + " after " + (System.currentTimeMillis() - millis) + "ms");
@@ -55,32 +55,33 @@ public class RicochetSolver {
         millis = System.currentTimeMillis() - millis;
         println("solved with depth " + depth);
         println(nodes + "nodes in " + millis + "ms (" + nodes / millis + "knps)");
-        println("branching: " + String.format("%s", Math.pow(nodes, 1d / depth)));
+        println("branching: " + Math.pow(nodes, 1d / depth));
         int tableCount = table.count();
-        println("used " + tableCount + " of " + table.size() + " available entries. (" + String.format("%s", (double)tableCount / table.size()) + " fillrate)");
+        println("used " + tableCount + " of " + table.size() + " available entries. (" + (double)tableCount / table.size() + " fillrate)");
         if(DIRECTION_PRUNING) {
-            println("pruned directions amount " + prunes + "/" + (prunes + nonprunes));
+            println("pruned directions amount " + prunes + "/" + (prunes + nonprunes) + " (" + (double) prunes / (prunes + nonprunes) + " prunerate)");
         }
-            println("tthits " + ttHits + "/" + (ttHits + ttNonHits));
+            println("tthits " + ttHits + "/" + (ttHits + ttNonHits) + " (" + (double)ttHits / (ttHits + ttNonHits) + " hitrate)");
         return result;
     }
 
     private boolean search(int remainingDepth, int pruneDirectionsFlags) {
         nodes++;
-        int minTargetDistance = targetDistance[state.botSquare(targetBot)]; //targetDistance[state.botSquare(targetBot)];
+        int minTargetDistance = targetDistance[state.botSquare(targetBot)];
         if(remainingDepth < minTargetDistance) {
             //early exit
             return false;
         }
-        table.saveDepth(hash, remainingDepth);
         if(remainingDepth == minTargetDistance) {
+            table.saveDepthIfEmpty(hash, remainingDepth);
             //target can only be reached by moving targetBot, if depth == 0 we already solved it
             if (remainingDepth == 0 || searchBotMoves(targetBot, remainingDepth, pruneDirectionsFlags)) {
                 return true;
             }
         } else {
+            table.saveDepth(hash, remainingDepth);
             //normal search
-            for (int currentBot : bots) {
+            for (int currentBot : botsOrder) {
                 if (searchBotMoves(currentBot, remainingDepth, pruneDirectionsFlags)) {
                     return true;
                 }
@@ -133,8 +134,7 @@ public class RicochetSolver {
                 hash = prevHash;
                 state.forceMove(currentBot, to, from);//undo move
                 if (solved) {
-                    result.add(0, direction);
-                    result.add(0, currentBot);
+                    result.add(0, new RicochetMove(currentBot, direction));
                     return true;
                 }
             }

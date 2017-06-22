@@ -49,3 +49,4 @@ build.xml
 build/
 nbproject/
 manifest.mf
+/dist/
