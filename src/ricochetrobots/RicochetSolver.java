@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import static ricochetrobots.RicochetUtil.*;
 
 /**
@@ -34,9 +35,11 @@ public class RicochetSolver {
         nodes = 0;
         prunes = nonprunes = 0;
         ttHits = ttNonHits = 0;
+        Arrays.fill(leafyNodes, 0);
+        Arrays.fill(innerNodes, 0);
         this.targetBot = targetBot;
         populateTargetDistance(targetSquare);
-        zobrist.initHashes(new Random(17), targetBot);
+        zobrist.initHashes(new Random(0), targetBot);
         table.clear();
         hash = 0;
         for (int bot = 0; bot < NUM_BOTS; bot++) {
@@ -61,7 +64,9 @@ public class RicochetSolver {
         if(DIRECTION_PRUNING) {
             println("pruned directions amount " + prunes + "/" + (prunes + nonprunes) + " (" + (double) prunes / (prunes + nonprunes) + " prunerate)");
         }
-            println("tthits " + ttHits + "/" + (ttHits + ttNonHits) + " (" + (double)ttHits / (ttHits + ttNonHits) + " hitrate)");
+        println("tthits " + ttHits + "/" + (ttHits + ttNonHits) + " (" + (double)ttHits / (ttHits + ttNonHits) + " hitrate)");
+        println(Arrays.stream(leafyNodes).mapToObj(String::valueOf).collect(Collectors.joining(", ")));
+        println(Arrays.stream(innerNodes).mapToObj(String::valueOf).collect(Collectors.joining(", ")));
         return result;
     }
 
@@ -74,12 +79,14 @@ public class RicochetSolver {
         }
         if(remainingDepth == minTargetDistance) {
             table.saveDepthIfEmpty(hash, remainingDepth);
+            leafyNodes[remainingDepth]++;
             //target can only be reached by moving targetBot, if depth == 0 we already solved it
             if (remainingDepth == 0 || searchBotMoves(targetBot, remainingDepth, pruneDirectionsFlags)) {
                 return true;
             }
         } else {
             table.saveDepth(hash, remainingDepth);
+            innerNodes[remainingDepth]++;
             //normal search
             for (int currentBot : botsOrder) {
                 if (searchBotMoves(currentBot, remainingDepth, pruneDirectionsFlags)) {
@@ -90,6 +97,8 @@ public class RicochetSolver {
         return false;
     }
 
+    long[] leafyNodes = new long[10];
+    long[] innerNodes = new long[25];
     long ttHits = 0, ttNonHits = 0;
     long prunes = 0, nonprunes = 0;
     private boolean searchBotMoves(int currentBot, int remainingDepth, int pruneDirectionsFlags) {
