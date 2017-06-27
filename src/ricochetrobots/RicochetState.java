@@ -15,4 +15,11 @@ public interface RicochetState {
     default boolean isWall(int square, int direction) {
         return findWall(square, direction) == square;
     }
+    
+    public default int moveBot(int bot, int direction) {
+        int from = botSquare(bot);
+        int to = findMoveLimit(from, direction);
+        forceMove(bot, from, to);
+        return to;
+    }
 }

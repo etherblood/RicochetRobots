@@ -70,13 +70,6 @@ public class SimpleRicochetState implements RicochetState {
         squareBot[square] = bot;
     }
     
-    public int moveBot(int bot, int direction) {
-        int from = botSquare[bot];
-        int to = findMoveLimit(from, direction);
-        forceMove(bot, from, to);
-        return to;
-    }
-    
     @Override
     public void forceMove(int bot, int index, int targetIndex) {
         squareBot[index] = EMPTY;

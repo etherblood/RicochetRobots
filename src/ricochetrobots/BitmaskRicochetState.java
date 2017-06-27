@@ -39,13 +39,6 @@ public class BitmaskRicochetState implements RicochetState {
         flipBot(square);
     }
 
-    public int moveBot(int bot, int direction) {
-        int from = botSquare[bot];
-        int to = findMoveLimit(from, direction);
-        forceMove(bot, from, to);
-        return to;
-    }
-
     @Override
     public void forceMove(int bot, int from, int to) {
         botSquare[bot] = to;

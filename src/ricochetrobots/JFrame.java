@@ -1,8 +1,15 @@
 package ricochetrobots;
 
 import java.awt.Color;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 import static ricochetrobots.RicochetUtil.*;
+import ricochetrobots.generation.BoardFactory;
+import ricochetrobots.generation.DefaultQuadrants;
+import ricochetrobots.generation.Quadrant;
 
 /**
  *
@@ -47,18 +54,36 @@ public class JFrame extends javax.swing.JFrame {
 
         RicochetState state = new BitmaskRicochetState();
 
-        int targetBot = blue;
-        int targetSquare = setup5bots22movesForBlue(state);
+        Random rng = new Random();
+        Set<Integer> occupied = new HashSet<>();
+        occupied.add(RicochetUtil.square(7, 7));
+        occupied.add(RicochetUtil.square(7, 8));
+        occupied.add(RicochetUtil.square(8, 7));
+        occupied.add(RicochetUtil.square(8, 8));
+        
+        int targetBot = rng.nextInt(NUM_BOTS);
+        
+        int targetSquare = randomSquare(rng, 256, occupied);
+        occupied.add(targetSquare);
+        
+        new BoardFactory().populate(state, Arrays.asList(
+                DefaultQuadrants.QUADRANTS[0].build(),
+                DefaultQuadrants.QUADRANTS[1].build(),
+                DefaultQuadrants.QUADRANTS[2].build(),
+                DefaultQuadrants.QUADRANTS[3].build()
+        ));
+        for (int bot = 0; bot < NUM_BOTS; bot++) {
+            int square = randomSquare(rng, 256, occupied);
+            occupied.add(square);
+            state.addBot(bot, square);
+        }
 
         new Thread(() -> {
-            RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(26));//26 -> 1 GB
+            RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(18));
             List<RicochetMove> solve = solver.solve(targetBot, targetSquare);
             for (RicochetMove move : solve) {
                 System.out.println(botTexts[move.getBot()] + directionTexts[move.getDirection()]);
             }
-            for (int i = 0; i < solve.size(); i += 2) {
-            }
-            System.exit(0);
         }).start();
 
         BoardPanel panel = new BoardPanel(state, colors);
@@ -68,69 +93,13 @@ public class JFrame extends javax.swing.JFrame {
         add(panel);
         panel.invalidate();
     }
-
-    private int setup5bots22movesForBlue(RicochetState state) {
-        state.addBot(red, square(2, 14));
-        state.addBot(blue, square(11, 2));
-        state.addBot(yellow, square(2, 1));
-        state.addBot(green, square(0, 3));
-        state.addBot(silver, square(2, 2));
-
-        state.setWall(square(4, 0), RIGHT);
-        state.setWall(square(9, 0), RIGHT);
-        state.setWall(square(14, 0), UP);
-        state.setWall(square(2, 1), UP);
-        state.setWall(square(2, 1), RIGHT);
-        state.setWall(square(13, 1), RIGHT);
-        state.setWall(square(10, 2), RIGHT);
-        state.setWall(square(11, 2), UP);
-        state.setWall(square(0, 3), RIGHT);
-        state.setWall(square(1, 3), UP);
-        state.setWall(square(15, 3), UP);
-        state.setWall(square(0, 4), UP);
-        state.setWall(square(5, 4), RIGHT);
-        state.setWall(square(5, 5), UP);
-
-        state.setWall(square(5, 6), RIGHT);
-        state.setWall(square(7, 6), UP);
-        state.setWall(square(8, 6), UP);
-        state.setWall(square(10, 6), UP);
-        state.setWall(square(13, 6), UP);
-        state.setWall(square(13, 6), RIGHT);
-        state.setWall(square(3, 7), UP);
-        state.setWall(square(3, 7), RIGHT);
-        state.setWall(square(6, 7), RIGHT);
-        state.setWall(square(8, 7), RIGHT);
-        state.setWall(square(10, 7), RIGHT);
-        state.setWall(square(6, 3), UP);
-
-        state.setWall(square(7, 8), LEFT);
-        state.setWall(square(7, 8), UP);
-        state.setWall(square(8, 8), RIGHT);
-        state.setWall(square(8, 8), UP);
-        state.setWall(square(3, 9), DOWN);
-        state.setWall(square(3, 9), RIGHT);
-        state.setWall(square(14, 9), LEFT);
-        state.setWall(square(14, 9), DOWN);
-        state.setWall(square(11, 10), UP);
-        state.setWall(square(11, 10), LEFT);
-        state.setWall(square(1, 11), UP);
-        state.setWall(square(1, 11), LEFT);
-
-        state.setWall(square(2, 14), LEFT);
-        state.setWall(square(2, 14), DOWN);
-        state.setWall(square(0, 14), DOWN);
-        state.setWall(square(6, 15), LEFT);
-        state.setWall(square(11, 15), RIGHT);
-        state.setWall(square(13, 14), UP);
-        state.setWall(square(13, 14), RIGHT);
-        state.setWall(square(9, 12), RIGHT);
-        state.setWall(square(9, 12), DOWN);
-        state.setWall(square(15, 10), UP);
-        state.setWall(square(6, 12), UP);
-        state.setWall(square(6, 12), RIGHT);
-
-        return square(9, 12);
+    
+    private int randomSquare(Random rng, int max, Set<Integer> occupied) {
+        int result;
+        do {
+            result = rng.nextInt(max);
+        } while(occupied.contains(result));
+        return result;
     }
 
     /**
