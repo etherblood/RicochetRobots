@@ -39,7 +39,7 @@ public class RicochetSolver {
         Arrays.fill(innerNodes, 0);
         this.targetBot = targetBot;
         populateTargetDistance(targetSquare);
-        zobrist.initHashes(new Random(0), targetBot);
+        zobrist.initHashes(new Random(491), targetBot);
         table.clear();
         hash = 0;
         for (int bot = 0; bot < NUM_BOTS; bot++) {

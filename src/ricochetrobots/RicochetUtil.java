@@ -5,15 +5,15 @@ package ricochetrobots;
  * @author Philipp
  */
 public class RicochetUtil {
-    static final int DOWN = 0;
-    static final int LEFT = 1;
-    static final int UP = 2;
-    static final int RIGHT = 3;
-    static final int NUM_DIRECTIONS = 4;
-    static final int NUM_BOTS = 5;
-    static final int SIZE = 16;
-    static final int EMPTY = -1;
-    static final int[] DIRECTION_OFFSETS = new int[NUM_DIRECTIONS];
+    public static final int DOWN = 0;
+    public static final int LEFT = 1;
+    public static final int UP = 2;
+    public static final int RIGHT = 3;
+    public static final int NUM_DIRECTIONS = 4;
+    public static final int NUM_BOTS = 5;
+    public static final int SIZE = 16;
+    public static final int EMPTY = -1;
+    public static final int[] DIRECTION_OFFSETS = new int[NUM_DIRECTIONS];
     
     static {
         DIRECTION_OFFSETS[UP] = SIZE;
