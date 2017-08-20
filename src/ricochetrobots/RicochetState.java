@@ -26,14 +26,14 @@ public interface RicochetState {
         return findWall(square, direction) == square;
     }
 
-    public default int moveBot(int bot, int direction) {
+    default int moveBot(int bot, int direction) {
         int from = botSquare(bot);
         int to = findMoveLimit(from, direction);
         forceMove(bot, from, to);
         return to;
     }
 
-    public default int colBots(int square, int[] output) {
+    default int colBots(int square, int[] output) {
         int count = 0;
         int x = x(square);
         for (int bot = 0; bot < NUM_BOTS; bot++) {
@@ -45,7 +45,7 @@ public interface RicochetState {
         return count;
     }
 
-    public default int rowBots(int square, int[] output) {
+    default int rowBots(int square, int[] output) {
         int count = 0;
         int y = y(square);
         for (int bot = 0; bot < NUM_BOTS; bot++) {
@@ -56,4 +56,6 @@ public interface RicochetState {
         }
         return count;
     }
+    
+    int neighborBot(int square, int direction);
 }

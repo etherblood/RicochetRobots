@@ -5,7 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
-import static ricochetrobots.RicochetUtil.*;
+import static ricochetrobots.RicochetStateSettings.*;
 
 /**
  *
@@ -13,22 +13,26 @@ import static ricochetrobots.RicochetUtil.*;
  */
 public class RicochetSolver {
 
-    private final static boolean VERBOSE = true, DIRECTION_PRUNING = false, ADVANCED_DIR_PRUNING = true;
+    private final static boolean VERBOSE = true;
 
     private List<RicochetMove> result;
+    private final RicochetStateSettings settings;
     private final TranspositionTable table;
     private final TranspositionEntry entry = new TranspositionEntry();
-    private final int[] targetDistance = new int[SIZE * SIZE];
+    private final int[] targetDistance;
     private long nodes;
-    private final int[] botsOrder = new int[NUM_BOTS];
+    private final int[] botsOrder;
     private int targetBot;
     private final RicochetState state;
     private final RicochetZobrist zobrist = new RicochetZobrist();
     private long hash;
 
-    public RicochetSolver(RicochetState state, TranspositionTable table) {
+    public RicochetSolver(RicochetState state, TranspositionTable table, RicochetStateSettings settings) {
         this.state = state;
         this.table = table;
+        this.settings = settings;
+        targetDistance = new int[settings.getSize() * settings.getSize()];
+        botsOrder = new int[settings.getBotCount()];
     }
 
     public List<RicochetMove> solve(int targetBot, int targetSquare) {
@@ -40,10 +44,10 @@ public class RicochetSolver {
         Arrays.fill(innerNodes, 0);
         this.targetBot = targetBot;
         populateTargetDistance(targetSquare);
-        zobrist.initHashes(new Random(491), targetBot);
+        zobrist.initHashes(new Random(491), targetBot);//seed 491 creates unique hashes which always have at least 1 bit set in the topmost 33 bits
         table.clear();
         hash = 0;
-        for (int bot = 0; bot < NUM_BOTS; bot++) {
+        for (int bot = 0; bot < botsOrder.length; bot++) {
             botsOrder[bot] = bot;
             hash ^= zobrist.botSquareHash(bot, state.botSquare(bot));
         }
@@ -52,7 +56,7 @@ public class RicochetSolver {
 
         result = new LinkedList<>();
         int depth = 0;
-        while (!search(depth, 0)) {
+        while (!search(depth, ~0)) {
             println("no solution for depth " + depth + " after " + (System.currentTimeMillis() - millis) + "ms");
             depth++;
         }
@@ -62,16 +66,14 @@ public class RicochetSolver {
         println("branching: " + Math.pow(nodes, 1d / depth));
         int tableCount = table.count();
         println("used " + tableCount + " of " + table.size() + " available entries. (" + (double) tableCount / table.size() + " fillrate)");
-        if (DIRECTION_PRUNING) {
-            println("pruned directions amount " + prunes + "/" + (prunes + nonprunes) + " (" + (double) prunes / (prunes + nonprunes) + " prunerate)");
-        }
+        println("pruned directions amount " + prunes + "/" + (prunes + nonprunes) + " (" + (double) prunes / (prunes + nonprunes) + " prunerate)");
         println("tthits " + ttHits + "/" + (ttHits + ttNonHits) + " (" + (double) ttHits / (ttHits + ttNonHits) + " hitrate)");
         println(Arrays.stream(leafyNodes).mapToObj(String::valueOf).collect(Collectors.joining(", ")));
         println(Arrays.stream(innerNodes).mapToObj(String::valueOf).collect(Collectors.joining(", ")));
         return result;
     }
 
-    private boolean search(int remainingDepth, int pruneDirectionsFlags) {
+    private boolean search(int remainingDepth, int availableDirections) {
         nodes++;
         int minTargetDistance = targetDistance[state.botSquare(targetBot)];
         if (remainingDepth < minTargetDistance) {
@@ -82,7 +84,7 @@ public class RicochetSolver {
             table.saveDepthIfEmpty(hash, remainingDepth);
             leafyNodes[remainingDepth]++;
             //target can only be reached by moving targetBot, if depth == 0 we already solved it
-            if (remainingDepth == 0 || searchBotMoves(targetBot, remainingDepth, pruneDirectionsFlags)) {
+            if (remainingDepth == 0 || searchBotMoves(targetBot, remainingDepth, availableDirections)) {
                 return true;
             }
         } else {
@@ -90,7 +92,7 @@ public class RicochetSolver {
             innerNodes[remainingDepth]++;
             //normal search
             for (int currentBot : botsOrder) {
-                if (searchBotMoves(currentBot, remainingDepth, pruneDirectionsFlags)) {
+                if (searchBotMoves(currentBot, remainingDepth, availableDirections)) {
                     return true;
                 }
             }
@@ -103,42 +105,14 @@ public class RicochetSolver {
     long ttHits = 0, ttNonHits = 0;
     long prunes = 0, nonprunes = 0;
 
-    int[] tmpArr = new int[NUM_BOTS];
-
-    private boolean searchBotMoves(int currentBot, int remainingDepth, int pruneDirectionsFlags) {
-        int increment, startDirection;
-        if (ADVANCED_DIR_PRUNING) {
-            int prunedDirections = (pruneDirectionsFlags >>> (2 * currentBot)) & 3;
-            switch (prunedDirections) {
-                case 0:
-                    increment = 1;
-                    startDirection = 0;
-                    nonprunes++;
-                    break;
-                case 1:
-                    increment = 2;
-                    startDirection = 1;
-                    prunes++;
-                    break;
-                case 2:
-                    increment = 2;
-                    startDirection = 0;
-                    prunes++;
-                    break;
-                default:
-                    throw new UnsupportedOperationException(Integer.toString(prunedDirections));
-
+    private boolean searchBotMoves(int currentBot, int remainingDepth, int availableDirections) {
+        int dirs = availableDirections >>> (4 * currentBot);
+        for (int direction = 0; direction < 4; direction++) {
+            if (((dirs >>> direction) & 1) == 0) {
+                prunes++;
+                continue;
             }
-        } else if (DIRECTION_PRUNING && ((2 << currentBot) & pruneDirectionsFlags) != 0) {
-            increment = 2;
-            startDirection = ~pruneDirectionsFlags & 1;
-            prunes++;
-        } else {
-            increment = 1;
-            startDirection = 0;
             nonprunes++;
-        }
-        for (int direction = startDirection; direction < NUM_DIRECTIONS; direction += increment) {
             int from = state.botSquare(currentBot);
             int to = state.findMoveLimit(from, direction);
             if (from != to) {//skip if bot won't move
@@ -153,37 +127,8 @@ public class RicochetSolver {
                 hash = childHash;
                 state.forceMove(currentBot, from, to);
 
-                int nextPruneDirectionsFlags;
-                if (ADVANCED_DIR_PRUNING) {
-                    nextPruneDirectionsFlags = pruneDirectionsFlags;
-                    boolean horizontalMove = (direction & 1) != 0;
-                    if (horizontalMove) {
-                        int numNeighbors = state.colBots(to, tmpArr);
-                        for (int i = 0; i < numNeighbors; i++) {
-                            int neighborBot = tmpArr[i];
-                            nextPruneDirectionsFlags &= ~(1 << (2 * neighborBot));
-                        }
-                        nextPruneDirectionsFlags |= 2 << (2 * currentBot);
-                    } else {
-                        int numNeighbors = state.rowBots(to, tmpArr);
-                        for (int i = 0; i < numNeighbors; i++) {
-                            int neighborBot = tmpArr[i];
-                            nextPruneDirectionsFlags &= ~(2 << (2 * neighborBot));
-                        }
-                        nextPruneDirectionsFlags |= 1 << (2 * currentBot);
-                    }
-                } else if (DIRECTION_PRUNING) {
-                    if (((direction ^ pruneDirectionsFlags) & 1) != 0) {
-                        nextPruneDirectionsFlags = direction & 1;
-                    } else {
-                        nextPruneDirectionsFlags = pruneDirectionsFlags;
-                    }
-                    nextPruneDirectionsFlags |= 2 << currentBot;
-                } else {
-                    nextPruneDirectionsFlags = 0;
-                }
-
-                boolean solved = search(remainingDepth - 1, nextPruneDirectionsFlags);
+                int nextAvailableDirections = nextAvailableDirections(availableDirections, currentBot, direction, to);
+                boolean solved = search(remainingDepth - 1, nextAvailableDirections);
                 hash = prevHash;
                 state.forceMove(currentBot, to, from);//undo move
                 if (solved) {
@@ -193,6 +138,38 @@ public class RicochetSolver {
             }
         }
         return false;
+    }
+
+    private int nextAvailableDirections(int availableDirections, int movedBot, int lastDirection, int movedTo) {
+        boolean horizontalMove = (lastDirection & 1) != 0;
+        if (horizontalMove) {
+            int upperNeighbor = state.neighborBot(movedTo, UP);
+            if (upperNeighbor != -1) {
+                availableDirections |= 1 << (4 * upperNeighbor + DOWN);
+            }
+            int lowerNeighbor = state.neighborBot(movedTo, DOWN);
+            if (lowerNeighbor != -1) {
+                availableDirections |= 1 << (4 * lowerNeighbor + UP);
+            }
+            int leftRight = (1 << LEFT) | (1 << RIGHT);
+            int downUp = (1 << DOWN) | (1 << UP);
+            availableDirections &= ~(leftRight << (4 * movedBot));
+            availableDirections |= downUp << (4 * movedBot);
+        } else {
+            int upperNeighbor = state.neighborBot(movedTo, RIGHT);
+            if (upperNeighbor != -1) {
+                availableDirections |= 1 << (4 * upperNeighbor + LEFT);
+            }
+            int lowerNeighbor = state.neighborBot(movedTo, LEFT);
+            if (lowerNeighbor != -1) {
+                availableDirections |= 1 << (4 * lowerNeighbor + RIGHT);
+            }
+            int leftRight = (1 << LEFT) | (1 << RIGHT);
+            int downUp = (1 << DOWN) | (1 << UP);
+            availableDirections &= ~(downUp << (4 * movedBot));
+            availableDirections |= leftRight << (4 * movedBot);
+        }
+        return availableDirections;
     }
 
     private void populateTargetDistance(int targetSquare) {
@@ -207,7 +184,7 @@ public class RicochetSolver {
             int target = state.findWall(square, direction);
             int currentSquare = square;
             while (currentSquare != target) {
-                currentSquare += DIRECTION_OFFSETS[direction];
+                currentSquare += settings.getDirectionOffset(direction);
                 if (targetDistance[currentSquare] > nextDistance) {
                     targetDistance[currentSquare] = nextDistance;
                     chainUpdateDistance(currentSquare);

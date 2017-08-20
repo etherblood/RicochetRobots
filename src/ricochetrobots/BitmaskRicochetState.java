@@ -192,4 +192,86 @@ public class BitmaskRicochetState implements RicochetState {
         assert (from & 0xf) == from : from;
         return (from << SIZE) | (obstacles & 0xffff);
     }
+
+    @Override
+    public int neighborBot(int square, int direction) {
+        int x = x(square);
+        int y = y(square);
+        switch (direction) {
+            case DOWN: {
+                int potential = cols[x] & ~colBlocked[square];
+                if (potential == 0) {
+                    return -1;
+                }
+                do {
+                    y--;
+                } while (y >= 0 && ((1 << y) & potential) == 0);
+                if (y == -1) {
+                    return -1;
+                }
+                return botFromSquare(square(x, y));
+            }
+            case LEFT: {
+                int potential = rows[y] & ~rowBlocked[square];
+                if (potential == 0) {
+                    return -1;
+                }
+                do {
+                    x--;
+                } while (x >= 0 && ((1 << x) & potential) == 0);
+                if (x == -1) {
+                    return -1;
+                }
+                return botFromSquare(square(x, y));
+            }
+            case UP: {
+                int potential = cols[x] & ~colBlocked[square];
+                if (potential == 0) {
+                    return -1;
+                }
+                do {
+                    y++;
+                } while (y < SIZE && ((1 << y) & potential) == 0);
+                if (y == SIZE) {
+                    return -1;
+                }
+                return botFromSquare(square(x, y));
+            }
+            case RIGHT: {
+                int potential = rows[y] & ~rowBlocked[square];
+                if (potential == 0) {
+                    return -1;
+                }
+                do {
+                    x++;
+                } while (x < SIZE && ((1 << x) & potential) == 0);
+                if (x == SIZE) {
+                    return -1;
+                }
+                return botFromSquare(square(x, y));
+            }
+            default:
+                throw new UnsupportedOperationException("invalid direction: " + direction);
+        }
+    }
+    
+    int botFromSquare(int square) {
+        for (int bot = 0; bot < NUM_BOTS; bot++) {
+            if(botSquare(bot) == square) {
+                return bot;
+            }
+        }
+        throw new IllegalStateException();
+    }
+
+    int lowerObstacle(int from, int obstacles) {
+        if (from == 0) {
+            return -1;
+        }
+        int shiftedObstacles = obstacles << (Integer.SIZE - from);
+        if (shiftedObstacles == 0) {
+            return -1;
+        }
+        return from - Integer.numberOfLeadingZeros(shiftedObstacles) - 1;
+    }
 }

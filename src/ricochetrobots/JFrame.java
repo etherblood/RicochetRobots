@@ -9,7 +9,6 @@ import java.util.Set;
 import static ricochetrobots.RicochetUtil.*;
 import ricochetrobots.generation.BoardFactory;
 import ricochetrobots.generation.DefaultQuadrants;
-import ricochetrobots.generation.Quadrant;
 
 /**
  *
@@ -81,7 +80,7 @@ public class JFrame extends javax.swing.JFrame {
         }
 
         new Thread(() -> {
-            RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(18));
+            RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(18), new RicochetStateSettings(NUM_BOTS, SIZE));
             List<RicochetMove> solve = solver.solve(targetBot, targetSquare);
             for (RicochetMove move : solve) {
                 System.out.println(botTexts[move.getBot()] + directionTexts[move.getDirection()]);

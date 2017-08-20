@@ -28,7 +28,7 @@ public class SamplePuzzlesTest {
         int targetBot = blue;
         int targetSquare = square(9, 12);
         
-        RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(26));
+        RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(26), new RicochetStateSettings(5, 16));
         List<RicochetMove> result = solver.solve(targetBot, targetSquare);
         assertEquals(22, result.size());
         for (RicochetMove move : result) {

@@ -100,4 +100,18 @@ public class SimpleRicochetState implements RicochetState {
     public int botSquare(int bot) {
         return botSquare[bot];
     }
+
+    @Override
+    public int neighborBot(int square, int direction) {
+        int last = findWall(square, direction);
+        int dirOffset = DIRECTION_OFFSETS[direction];
+        while(square != last) {
+            square += dirOffset;
+            int bot = squareBot(square);
+            if(bot != EMPTY) {
+                return bot;
+            }
+        }
+        return -1;
+    }
 }

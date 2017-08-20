@@ -7,9 +7,9 @@ import static org.junit.Assert.*;
  *
  * @author Philipp
  */
-public class FastRicochetStateTest {
+public class BitmaskRicochetStateTest {
     
-    public FastRicochetStateTest() {
+    public BitmaskRicochetStateTest() {
     }
 
     @Test
