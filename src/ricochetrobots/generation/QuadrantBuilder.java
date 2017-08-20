@@ -2,7 +2,7 @@ package ricochetrobots.generation;
 
 import java.util.ArrayList;
 import java.util.List;
-import ricochetrobots.RicochetUtil;
+import ricochetrobots.RicochetStateSettings;
 
 /**
  *
@@ -26,16 +26,16 @@ public class QuadrantBuilder {
             char c = direction.charAt(i);
             switch (c) {
                 case 'N':
-                    addWall(x, y, RicochetUtil.UP);
+                    addWall(x, y, RicochetStateSettings.UP);
                     break;
                 case 'E':
-                    addWall(x, y, RicochetUtil.RIGHT);
+                    addWall(x, y, RicochetStateSettings.RIGHT);
                     break;
                 case 'S':
-                    addWall(x, y, RicochetUtil.DOWN);
+                    addWall(x, y, RicochetStateSettings.DOWN);
                     break;
                 case 'W':
-                    addWall(x, y, RicochetUtil.LEFT);
+                    addWall(x, y, RicochetStateSettings.LEFT);
                     break;
             }
         }

@@ -10,10 +10,10 @@ public class RicochetStateSettings {
     public static final int UP = 2;
     public static final int RIGHT = 3;
     public static final int NUM_DIRECTIONS = 4;
+    public final static int EMPTY = -1;
 
     private final int botCount;
     private final int size;
-    private final int EMPTY = -1;
     private final int[] directionOffsets = new int[NUM_DIRECTIONS];
 
     public RicochetStateSettings(int botCount, int size) {
@@ -36,23 +36,27 @@ public class RicochetStateSettings {
     }
 
     public int botDirectionIndex(int bot, int direction) {
-        return bot << 2 | direction;
+        return NUM_DIRECTIONS * bot + direction;
     }
     
     public int square(int x, int y) {
-        return x | (y << 4);
+        return size * y + x;
     }
     
     public int x(int square) {
-        return square & 0xf;
+        return square % size;
     }
     
     public int y(int square) {
-        return square >>> 4;
+        return square / size;
     }
     
     public int invertDirection(int direction) {
         return direction ^ 2;
+    }
+    
+    public int transposeDirection(int direction) {
+        return direction ^ 1;
     }
 
     public int getBotCount() {
@@ -61,10 +65,6 @@ public class RicochetStateSettings {
 
     public int getSize() {
         return size;
-    }
-
-    public int getEMPTY() {
-        return EMPTY;
     }
     
     public int getDirectionOffset(int direction) {

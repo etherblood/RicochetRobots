@@ -6,7 +6,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import javax.swing.JPanel;
-import static ricochetrobots.RicochetUtil.*;
+import static ricochetrobots.RicochetStateSettings.*;
 
 /**
  *
@@ -32,15 +32,15 @@ public class BoardPanel extends JPanel {
         t.scale(1, -1);
         g2d.transform(t);
         
-        float tileWidth = getWidth() / SIZE;
-        float tileHeight = getHeight() / SIZE;
+        float tileWidth = getWidth() / state.getSettings().getSize();
+        float tileHeight = getHeight() / state.getSettings().getSize();
         
-        for (int x = 0; x < SIZE; x++) {
-            for (int y = 0; y < SIZE; y++) {
-                int square = square(x, y);
+        for (int x = 0; x < state.getSettings().getSize(); x++) {
+            for (int y = 0; y < state.getSettings().getSize(); y++) {
+                int square = state.getSettings().square(x, y);
                 if(square == target) {
                     g.setColor(targetColor);
-                    g.fillRect((int)(x(square) * tileWidth), (int)(y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
+                    g.fillRect((int)(state.getSettings().x(square) * tileWidth), (int)(state.getSettings().y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
                 } else {
                     g.setColor(Color.LIGHT_GRAY);
                 }
@@ -79,10 +79,10 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        for (int bot = 0; bot < NUM_BOTS; bot++) {
+        for (int bot = 0; bot < state.getSettings().getBotCount(); bot++) {
             g.setColor(colors[bot]);
             int square = state.botSquare(bot);
-            g.fillOval((int)(x(square) * tileWidth), (int)(y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
+            g.fillOval((int)(state.getSettings().x(square) * tileWidth), (int)(state.getSettings().y(square) * tileHeight), (int)tileWidth, (int)tileHeight);
         }
     }
 

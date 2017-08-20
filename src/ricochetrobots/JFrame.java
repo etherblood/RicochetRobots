@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import static ricochetrobots.RicochetUtil.*;
+import static ricochetrobots.RicochetStateSettings.*;
 import ricochetrobots.generation.BoardFactory;
 import ricochetrobots.generation.DefaultQuadrants;
 
@@ -16,33 +16,15 @@ import ricochetrobots.generation.DefaultQuadrants;
  */
 public class JFrame extends javax.swing.JFrame {
 
-    private final String[] botTexts = new String[NUM_BOTS];
+    private final String[] botTexts = new String[]{"red", "blue", "yellow", "green", "silver"};
     private final String[] directionTexts = new String[NUM_DIRECTIONS];
-    private final Color[] colors = new Color[NUM_BOTS];
-
-    private final int red = 0;
-    private final int blue = 1;
-    private final int yellow = 2;
-    private final int green = 3;
-    private final int silver = 4;
+    private final Color[] colors = new Color[]{Color.RED, Color.BLUE, Color.YELLOW, Color.GREEN, Color.GRAY};
 
     {
-        botTexts[red] = "red ";
-        botTexts[blue] = "blue ";
-        botTexts[yellow] = "yellow ";
-        botTexts[green] = "green ";
-        botTexts[silver] = "silver ";
-
         directionTexts[UP] = "up";
         directionTexts[LEFT] = "left";
         directionTexts[DOWN] = "down";
         directionTexts[RIGHT] = "right";
-
-        colors[red] = Color.RED;
-        colors[blue] = Color.BLUE;
-        colors[yellow] = Color.YELLOW;
-        colors[green] = Color.GREEN;
-        colors[silver] = Color.GRAY;
     }
 
     /**
@@ -50,21 +32,21 @@ public class JFrame extends javax.swing.JFrame {
      */
     public JFrame() {
         initComponents();
-
-        RicochetState state = new BitmaskRicochetState();
+        RicochetStateSettings settings = new RicochetStateSettings(5, 16);
+        RicochetState state = new BitmaskRicochetState(settings);
 
         long seed = System.currentTimeMillis();
         System.out.println("used seed: " + seed);
         Random rng = new Random(seed);
         Set<Integer> occupied = new HashSet<>();
-        occupied.add(RicochetUtil.square(7, 7));
-        occupied.add(RicochetUtil.square(7, 8));
-        occupied.add(RicochetUtil.square(8, 7));
-        occupied.add(RicochetUtil.square(8, 8));
+        occupied.add(settings.square(7, 7));
+        occupied.add(settings.square(7, 8));
+        occupied.add(settings.square(8, 7));
+        occupied.add(settings.square(8, 8));
         
-        int targetBot = rng.nextInt(NUM_BOTS);
+        int targetBot = rng.nextInt(settings.getBotCount());
         
-        int targetSquare = randomSquare(rng, 256, occupied);
+        int targetSquare = randomSquare(rng, settings.getSize() * settings.getSize(), occupied);
         occupied.add(targetSquare);
         
         new BoardFactory().populate(state, Arrays.asList(
@@ -73,14 +55,14 @@ public class JFrame extends javax.swing.JFrame {
                 DefaultQuadrants.QUADRANTS[2].build(),
                 DefaultQuadrants.QUADRANTS[3].build()
         ));
-        for (int bot = 0; bot < NUM_BOTS; bot++) {
-            int square = randomSquare(rng, 256, occupied);
+        for (int bot = 0; bot < settings.getBotCount(); bot++) {
+            int square = randomSquare(rng, settings.getSize() * settings.getSize(), occupied);
             occupied.add(square);
             state.addBot(bot, square);
         }
 
         new Thread(() -> {
-            RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(18), new RicochetStateSettings(NUM_BOTS, SIZE));
+            RicochetSolver solver = new RicochetSolver(state, new TranspositionTable(18));
             List<RicochetMove> solve = solver.solve(targetBot, targetSquare);
             for (RicochetMove move : solve) {
                 System.out.println(botTexts[move.getBot()] + directionTexts[move.getDirection()]);

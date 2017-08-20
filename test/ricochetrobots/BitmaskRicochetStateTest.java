@@ -14,7 +14,7 @@ public class BitmaskRicochetStateTest {
 
     @Test
     public void lowerMove() {
-        BitmaskRicochetState state = new BitmaskRicochetState();
+        BitmaskRicochetState state = new BitmaskRicochetState(new RicochetStateSettings(5, 16));
         int lowerMove = state.lowerMove(0, (short) 0xff01);
         assertEquals(0, lowerMove);
         int upperMove = state.upperMove(0, (short) 0xff01);
@@ -33,14 +33,14 @@ public class BitmaskRicochetStateTest {
     
     @Test
     public void lowerMove2() {
-        BitmaskRicochetState state = new BitmaskRicochetState();
+        BitmaskRicochetState state = new BitmaskRicochetState(new RicochetStateSettings(5, 16));
         int lowerMove = state.lowerMove(2, (short) 0xfffc);
         assertEquals(0, lowerMove);
     }
     
     @Test
     public void upperMove2() {
-        BitmaskRicochetState state = new BitmaskRicochetState();
+        BitmaskRicochetState state = new BitmaskRicochetState(new RicochetStateSettings(5, 16));
         int upperMove = state.upperMove(11, (short) 0x0fff);
         assertEquals(15, upperMove);
     }

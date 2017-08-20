@@ -2,7 +2,6 @@ package ricochetrobots.generation;
 
 import java.util.List;
 import ricochetrobots.RicochetState;
-import ricochetrobots.RicochetUtil;
 
 /**
  *
@@ -20,7 +19,7 @@ public class BoardFactory {
                 current = current.translate(7, 7);
                 assert 0 <= current.getX() && current.getX() < 16;
                 assert 0 <= current.getY() && current.getY() < 16;
-                state.setWall(RicochetUtil.square(current.getX(), current.getY()), current.getDirection());
+                state.setWall(state.getSettings().square(current.getX(), current.getY()), current.getDirection());
             }
         }
     }

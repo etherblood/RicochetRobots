@@ -1,9 +1,5 @@
 package ricochetrobots;
 
-import static ricochetrobots.RicochetUtil.NUM_BOTS;
-import static ricochetrobots.RicochetUtil.x;
-import static ricochetrobots.RicochetUtil.y;
-
 /**
  *
  * @author Philipp
@@ -35,10 +31,10 @@ public interface RicochetState {
 
     default int colBots(int square, int[] output) {
         int count = 0;
-        int x = x(square);
-        for (int bot = 0; bot < NUM_BOTS; bot++) {
+        int x = getSettings().x(square);
+        for (int bot = 0; bot < getSettings().getBotCount(); bot++) {
             int neighborSquare = botSquare(bot);
-            if (x(neighborSquare) == x) {
+            if (getSettings().x(neighborSquare) == x) {
                 output[count++] = bot;
             }
         }
@@ -47,10 +43,10 @@ public interface RicochetState {
 
     default int rowBots(int square, int[] output) {
         int count = 0;
-        int y = y(square);
-        for (int bot = 0; bot < NUM_BOTS; bot++) {
+        int y = getSettings().y(square);
+        for (int bot = 0; bot < getSettings().getBotCount(); bot++) {
             int neighborSquare = botSquare(bot);
-            if (y(neighborSquare) == y) {
+            if (getSettings().y(neighborSquare) == y) {
                 output[count++] = bot;
             }
         }
@@ -58,4 +54,6 @@ public interface RicochetState {
     }
     
     int neighborBot(int square, int direction);
+    
+    RicochetStateSettings getSettings();
 }

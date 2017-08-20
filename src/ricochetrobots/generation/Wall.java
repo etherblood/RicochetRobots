@@ -1,12 +1,13 @@
 package ricochetrobots.generation;
 
-import static ricochetrobots.RicochetUtil.*;
+import ricochetrobots.RicochetStateSettings;
 
 /**
  *
  * @author Philipp
  */
 public class Wall {
+
     private final int x, y, direction;
 
     public Wall(int x, int y, int direction) {
@@ -14,11 +15,11 @@ public class Wall {
         this.y = y;
         this.direction = direction;
     }
-    
+
     public Wall rotateClockwise() {
-        return new Wall(y, -x + 1, (direction + 1) % NUM_DIRECTIONS);
+        return new Wall(y, -x + 1, (direction + 1) % RicochetStateSettings.NUM_DIRECTIONS);
     }
-    
+
     public Wall translate(int x, int y) {
         return new Wall(this.x + x, this.y + y, direction);
     }

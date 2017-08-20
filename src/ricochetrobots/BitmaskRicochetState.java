@@ -1,7 +1,7 @@
 package ricochetrobots;
 
 import java.util.Arrays;
-import static ricochetrobots.RicochetUtil.*;
+import static ricochetrobots.RicochetStateSettings.*;
 
 /**
  *
@@ -11,28 +11,36 @@ public class BitmaskRicochetState implements RicochetState {
 
     private final static boolean MOVES_LOOKUP = false;
 
+    private final RicochetStateSettings settings;
+
     private final int[] lowerMoves;
     private final int[] upperMoves;
 
-    private final int[] botSquare = new int[NUM_BOTS];
-    private final int[] cols = new int[SIZE];
-    private final int[] rows = new int[SIZE];
+    private final int[] botSquare;
+    private final int[] cols;
+    private final int[] rows;
 
-    private final int[] colBlocked = new int[SIZE * SIZE];
-    private final int[] rowBlocked = new int[SIZE * SIZE];
+    private final int[] colBlocked;
+    private final int[] rowBlocked;
 
-    public BitmaskRicochetState() {
-        if (SIZE != 16) {
+    public BitmaskRicochetState(RicochetStateSettings settings) {
+        this.settings = settings;
+        if (settings.getSize() != 16) {
             //assumptions were made...
             //code probably needs to be adjusted before being usable for other sizes
             throw new IllegalStateException("only boardsize of 16x16 supported");
         }
-        clear();
+        botSquare = new int[settings.getBotCount()];
+        cols = new int[settings.getSize()];
+        rows = new int[settings.getSize()];
+
+        colBlocked = new int[settings.getSize() * settings.getSize()];
+        rowBlocked = new int[settings.getSize() * settings.getSize()];
         if (MOVES_LOOKUP) {
-            lowerMoves = new int[SIZE << SIZE];
-            upperMoves = new int[SIZE << SIZE];
-            for (int from = 0; from < SIZE; from++) {
-                for (int obstacles = 0; obstacles < (1 << SIZE); obstacles++) {
+            lowerMoves = new int[settings.getSize() << settings.getSize()];
+            upperMoves = new int[settings.getSize() << settings.getSize()];
+            for (int from = 0; from < settings.getSize(); from++) {
+                for (int obstacles = 0; obstacles < (1 << settings.getSize()); obstacles++) {
                     int index = movesIndex(from, obstacles);
                     lowerMoves[index] = calcLowerMove(from, obstacles | 0xffff0000);
                     upperMoves[index] = calcUpperMove(from, obstacles | 0xffff0000);
@@ -42,6 +50,7 @@ public class BitmaskRicochetState implements RicochetState {
             lowerMoves = null;
             upperMoves = null;
         }
+        clear();
     }
 
     public final void clear() {
@@ -66,8 +75,8 @@ public class BitmaskRicochetState implements RicochetState {
     }
 
     private void flipBot(int square) {
-        int x = x(square);
-        int y = y(square);
+        int x = settings.x(square);
+        int y = settings.y(square);
         cols[x] ^= 1 << y;
         rows[y] ^= 1 << x;
     }
@@ -75,45 +84,45 @@ public class BitmaskRicochetState implements RicochetState {
     @Override
     public void setWall(int square, int direction) {
         if (direction >= 2) {
-            square += DIRECTION_OFFSETS[direction];
+            square += settings.getDirectionOffset(direction);
             direction &= 1;
         }
-        int x = x(square);
-        int y = y(square);
+        int x = settings.x(square);
+        int y = settings.y(square);
         if (direction == DOWN) {
             int upperMask = ~0 << y;
             for (int i = 0; i < y; i++) {
-                colBlocked[square(x, i)] |= upperMask;
+                colBlocked[settings.square(x, i)] |= upperMask;
             }
             int lowerMask = ~upperMask;
-            for (int i = y; i < SIZE; i++) {
-                colBlocked[square(x, i)] |= lowerMask;
+            for (int i = y; i < settings.getSize(); i++) {
+                colBlocked[settings.square(x, i)] |= lowerMask;
             }
         } else {
             int upperMask = ~0 << x;
             for (int i = 0; i < x; i++) {
-                rowBlocked[square(i, y)] |= upperMask;
+                rowBlocked[settings.square(i, y)] |= upperMask;
             }
             int lowerMask = ~upperMask;
-            for (int i = x; i < SIZE; i++) {
-                rowBlocked[square(i, y)] |= lowerMask;
+            for (int i = x; i < settings.getSize(); i++) {
+                rowBlocked[settings.square(i, y)] |= lowerMask;
             }
         }
     }
 
     @Override
     public int findMoveLimit(int square, int direction) {
-        int x = x(square);
-        int y = y(square);
+        int x = settings.x(square);
+        int y = settings.y(square);
         switch (direction) {
             case DOWN:
-                return square(x, lowerMove(y, cols[x] | colBlocked[square]));
+                return settings.square(x, lowerMove(y, cols[x] | colBlocked[square]));
             case LEFT:
-                return square(lowerMove(x, rows[y] | rowBlocked[square]), y);
+                return settings.square(lowerMove(x, rows[y] | rowBlocked[square]), y);
             case UP:
-                return square(x, upperMove(y, cols[x] | colBlocked[square]));
+                return settings.square(x, upperMove(y, cols[x] | colBlocked[square]));
             case RIGHT:
-                return square(upperMove(x, rows[y] | rowBlocked[square]), y);
+                return settings.square(upperMove(x, rows[y] | rowBlocked[square]), y);
             default:
                 throw new UnsupportedOperationException("invalid direction: " + direction);
         }
@@ -121,17 +130,17 @@ public class BitmaskRicochetState implements RicochetState {
 
     @Override
     public int findWall(int square, int direction) {
-        int x = x(square);
-        int y = y(square);
+        int x = settings.x(square);
+        int y = settings.y(square);
         switch (direction) {
             case DOWN:
-                return square(x, lowerMove(y, colBlocked[square]));
+                return settings.square(x, lowerMove(y, colBlocked[square]));
             case LEFT:
-                return square(lowerMove(x, rowBlocked[square]), y);
+                return settings.square(lowerMove(x, rowBlocked[square]), y);
             case UP:
-                return square(x, upperMove(y, colBlocked[square]));
+                return settings.square(x, upperMove(y, colBlocked[square]));
             case RIGHT:
-                return square(upperMove(x, rowBlocked[square]), y);
+                return settings.square(upperMove(x, rowBlocked[square]), y);
             default:
                 throw new UnsupportedOperationException("invalid direction: " + direction);
         }
@@ -174,7 +183,7 @@ public class BitmaskRicochetState implements RicochetState {
     private int calcUpperMove(int from, int obstacles) {
         int shiftedObstacles = obstacles >>> from + 1;
         if (shiftedObstacles == 0) {
-            return SIZE - 1;
+            return settings.getSize() - 1;
         }
         return from + Integer.numberOfTrailingZeros(shiftedObstacles);
     }
@@ -190,13 +199,13 @@ public class BitmaskRicochetState implements RicochetState {
 
     private int movesIndex(int from, int obstacles) {
         assert (from & 0xf) == from : from;
-        return (from << SIZE) | (obstacles & 0xffff);
+        return (from << settings.getSize()) | (obstacles & 0xffff);
     }
 
     @Override
     public int neighborBot(int square, int direction) {
-        int x = x(square);
-        int y = y(square);
+        int x = settings.x(square);
+        int y = settings.y(square);
         switch (direction) {
             case DOWN: {
                 int potential = cols[x] & ~colBlocked[square];
@@ -209,7 +218,7 @@ public class BitmaskRicochetState implements RicochetState {
                 if (y == -1) {
                     return -1;
                 }
-                return botFromSquare(square(x, y));
+                return botFromSquare(settings.square(x, y));
             }
             case LEFT: {
                 int potential = rows[y] & ~rowBlocked[square];
@@ -222,7 +231,7 @@ public class BitmaskRicochetState implements RicochetState {
                 if (x == -1) {
                     return -1;
                 }
-                return botFromSquare(square(x, y));
+                return botFromSquare(settings.square(x, y));
             }
             case UP: {
                 int potential = cols[x] & ~colBlocked[square];
@@ -231,11 +240,11 @@ public class BitmaskRicochetState implements RicochetState {
                 }
                 do {
                     y++;
-                } while (y < SIZE && ((1 << y) & potential) == 0);
-                if (y == SIZE) {
+                } while (y < settings.getSize() && ((1 << y) & potential) == 0);
+                if (y == settings.getSize()) {
                     return -1;
                 }
-                return botFromSquare(square(x, y));
+                return botFromSquare(settings.square(x, y));
             }
             case RIGHT: {
                 int potential = rows[y] & ~rowBlocked[square];
@@ -244,20 +253,20 @@ public class BitmaskRicochetState implements RicochetState {
                 }
                 do {
                     x++;
-                } while (x < SIZE && ((1 << x) & potential) == 0);
-                if (x == SIZE) {
+                } while (x < settings.getSize() && ((1 << x) & potential) == 0);
+                if (x == settings.getSize()) {
                     return -1;
                 }
-                return botFromSquare(square(x, y));
+                return botFromSquare(settings.square(x, y));
             }
             default:
                 throw new UnsupportedOperationException("invalid direction: " + direction);
         }
     }
-    
+
     int botFromSquare(int square) {
-        for (int bot = 0; bot < NUM_BOTS; bot++) {
-            if(botSquare(bot) == square) {
+        for (int bot = 0; bot < settings.getBotCount(); bot++) {
+            if (botSquare(bot) == square) {
                 return bot;
             }
         }
@@ -273,5 +282,10 @@ public class BitmaskRicochetState implements RicochetState {
             return -1;
         }
         return from - Integer.numberOfLeadingZeros(shiftedObstacles) - 1;
+    }
+
+    @Override
+    public RicochetStateSettings getSettings() {
+        return settings;
     }
 }
