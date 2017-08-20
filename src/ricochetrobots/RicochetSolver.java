@@ -12,8 +12,9 @@ import static ricochetrobots.RicochetUtil.*;
  * @author Philipp
  */
 public class RicochetSolver {
-    private final static boolean VERBOSE = true, DIRECTION_PRUNING = true;
-    
+
+    private final static boolean VERBOSE = true, DIRECTION_PRUNING = false, ADVANCED_DIR_PRUNING = true;
+
     private List<RicochetMove> result;
     private final TranspositionTable table;
     private final TranspositionEntry entry = new TranspositionEntry();
@@ -29,7 +30,7 @@ public class RicochetSolver {
         this.state = state;
         this.table = table;
     }
-    
+
     public List<RicochetMove> solve(int targetBot, int targetSquare) {
         long millis = System.currentTimeMillis();
         nodes = 0;
@@ -48,7 +49,7 @@ public class RicochetSolver {
         }
         botsOrder[targetBot] = 0;
         botsOrder[0] = targetBot;
-        
+
         result = new LinkedList<>();
         int depth = 0;
         while (!search(depth, 0)) {
@@ -60,11 +61,11 @@ public class RicochetSolver {
         println(nodes + "nodes in " + millis + "ms (" + nodes / millis + "knps)");
         println("branching: " + Math.pow(nodes, 1d / depth));
         int tableCount = table.count();
-        println("used " + tableCount + " of " + table.size() + " available entries. (" + (double)tableCount / table.size() + " fillrate)");
-        if(DIRECTION_PRUNING) {
+        println("used " + tableCount + " of " + table.size() + " available entries. (" + (double) tableCount / table.size() + " fillrate)");
+        if (DIRECTION_PRUNING) {
             println("pruned directions amount " + prunes + "/" + (prunes + nonprunes) + " (" + (double) prunes / (prunes + nonprunes) + " prunerate)");
         }
-        println("tthits " + ttHits + "/" + (ttHits + ttNonHits) + " (" + (double)ttHits / (ttHits + ttNonHits) + " hitrate)");
+        println("tthits " + ttHits + "/" + (ttHits + ttNonHits) + " (" + (double) ttHits / (ttHits + ttNonHits) + " hitrate)");
         println(Arrays.stream(leafyNodes).mapToObj(String::valueOf).collect(Collectors.joining(", ")));
         println(Arrays.stream(innerNodes).mapToObj(String::valueOf).collect(Collectors.joining(", ")));
         return result;
@@ -73,11 +74,11 @@ public class RicochetSolver {
     private boolean search(int remainingDepth, int pruneDirectionsFlags) {
         nodes++;
         int minTargetDistance = targetDistance[state.botSquare(targetBot)];
-        if(remainingDepth < minTargetDistance) {
+        if (remainingDepth < minTargetDistance) {
             //early exit
             return false;
         }
-        if(remainingDepth == minTargetDistance) {
+        if (remainingDepth == minTargetDistance) {
             table.saveDepthIfEmpty(hash, remainingDepth);
             leafyNodes[remainingDepth]++;
             //target can only be reached by moving targetBot, if depth == 0 we already solved it
@@ -101,9 +102,34 @@ public class RicochetSolver {
     long[] innerNodes = new long[25];
     long ttHits = 0, ttNonHits = 0;
     long prunes = 0, nonprunes = 0;
+
+    int[] tmpArr = new int[NUM_BOTS];
+
     private boolean searchBotMoves(int currentBot, int remainingDepth, int pruneDirectionsFlags) {
         int increment, startDirection;
-        if(DIRECTION_PRUNING && ((2 << currentBot) & pruneDirectionsFlags) != 0) {
+        if (ADVANCED_DIR_PRUNING) {
+            int prunedDirections = (pruneDirectionsFlags >>> (2 * currentBot)) & 3;
+            switch (prunedDirections) {
+                case 0:
+                    increment = 1;
+                    startDirection = 0;
+                    nonprunes++;
+                    break;
+                case 1:
+                    increment = 2;
+                    startDirection = 1;
+                    prunes++;
+                    break;
+                case 2:
+                    increment = 2;
+                    startDirection = 0;
+                    prunes++;
+                    break;
+                default:
+                    throw new UnsupportedOperationException(Integer.toString(prunedDirections));
+
+            }
+        } else if (DIRECTION_PRUNING && ((2 << currentBot) & pruneDirectionsFlags) != 0) {
             increment = 2;
             startDirection = ~pruneDirectionsFlags & 1;
             prunes++;
@@ -122,14 +148,32 @@ public class RicochetSolver {
                     continue;
                 }
                 ttNonHits++;
-                
+
                 long prevHash = hash;
                 hash = childHash;
                 state.forceMove(currentBot, from, to);
-                
+
                 int nextPruneDirectionsFlags;
-                if(DIRECTION_PRUNING) {
-                    if(((direction ^ pruneDirectionsFlags) & 1) != 0) {
+                if (ADVANCED_DIR_PRUNING) {
+                    nextPruneDirectionsFlags = pruneDirectionsFlags;
+                    boolean horizontalMove = (direction & 1) != 0;
+                    if (horizontalMove) {
+                        int numNeighbors = state.colBots(to, tmpArr);
+                        for (int i = 0; i < numNeighbors; i++) {
+                            int neighborBot = tmpArr[i];
+                            nextPruneDirectionsFlags &= ~(1 << (2 * neighborBot));
+                        }
+                        nextPruneDirectionsFlags |= 2 << (2 * currentBot);
+                    } else {
+                        int numNeighbors = state.rowBots(to, tmpArr);
+                        for (int i = 0; i < numNeighbors; i++) {
+                            int neighborBot = tmpArr[i];
+                            nextPruneDirectionsFlags &= ~(2 << (2 * neighborBot));
+                        }
+                        nextPruneDirectionsFlags |= 1 << (2 * currentBot);
+                    }
+                } else if (DIRECTION_PRUNING) {
+                    if (((direction ^ pruneDirectionsFlags) & 1) != 0) {
                         nextPruneDirectionsFlags = direction & 1;
                     } else {
                         nextPruneDirectionsFlags = pruneDirectionsFlags;
@@ -138,7 +182,7 @@ public class RicochetSolver {
                 } else {
                     nextPruneDirectionsFlags = 0;
                 }
-                
+
                 boolean solved = search(remainingDepth - 1, nextPruneDirectionsFlags);
                 hash = prevHash;
                 state.forceMove(currentBot, to, from);//undo move
@@ -156,24 +200,24 @@ public class RicochetSolver {
         targetDistance[targetSquare] = 0;
         chainUpdateDistance(targetSquare);
     }
-    
+
     private void chainUpdateDistance(int square) {
         int nextDistance = targetDistance[square] + 1;
         for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
             int target = state.findWall(square, direction);
             int currentSquare = square;
-            while(currentSquare != target) {
+            while (currentSquare != target) {
                 currentSquare += DIRECTION_OFFSETS[direction];
-                if(targetDistance[currentSquare] > nextDistance) {
+                if (targetDistance[currentSquare] > nextDistance) {
                     targetDistance[currentSquare] = nextDistance;
                     chainUpdateDistance(currentSquare);
                 }
             }
         }
     }
-    
+
     private void println(String s) {
-        if(VERBOSE) {
+        if (VERBOSE) {
             System.out.println(s);
         }
     }

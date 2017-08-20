@@ -9,6 +9,11 @@ import static ricochetrobots.RicochetUtil.*;
  */
 public class BitmaskRicochetState implements RicochetState {
 
+    private final static boolean MOVES_LOOKUP = false;
+
+    private final int[] lowerMoves;
+    private final int[] upperMoves;
+
     private final int[] botSquare = new int[NUM_BOTS];
     private final int[] cols = new int[SIZE];
     private final int[] rows = new int[SIZE];
@@ -17,12 +22,26 @@ public class BitmaskRicochetState implements RicochetState {
     private final int[] rowBlocked = new int[SIZE * SIZE];
 
     public BitmaskRicochetState() {
-        if(SIZE != 16) {
+        if (SIZE != 16) {
             //assumptions were made...
             //code probably needs to be adjusted before being usable for other sizes
             throw new IllegalStateException("only boardsize of 16x16 supported");
         }
         clear();
+        if (MOVES_LOOKUP) {
+            lowerMoves = new int[SIZE << SIZE];
+            upperMoves = new int[SIZE << SIZE];
+            for (int from = 0; from < SIZE; from++) {
+                for (int obstacles = 0; obstacles < (1 << SIZE); obstacles++) {
+                    int index = movesIndex(from, obstacles);
+                    lowerMoves[index] = calcLowerMove(from, obstacles | 0xffff0000);
+                    upperMoves[index] = calcUpperMove(from, obstacles | 0xffff0000);
+                }
+            }
+        } else {
+            lowerMoves = null;
+            upperMoves = null;
+        }
     }
 
     public final void clear() {
@@ -119,6 +138,13 @@ public class BitmaskRicochetState implements RicochetState {
     }
 
     int lowerMove(int from, int obstacles) {
+        if (MOVES_LOOKUP) {
+            return lowerMoves[movesIndex(from, obstacles)];
+        }
+        return calcLowerMove(from, obstacles);
+    }
+
+    private int calcLowerMove(int from, int obstacles) {
         if (from == 0) {
             return 0;
         }
@@ -138,8 +164,14 @@ public class BitmaskRicochetState implements RicochetState {
 //        int shiftedObstacles = (int) ((long)~obstacles << (Integer.SIZE - from));
 //        return from - Integer.numberOfLeadingZeros(~shiftedObstacles);
 //    }
-
     int upperMove(int from, int obstacles) {
+        if (MOVES_LOOKUP) {
+            return upperMoves[movesIndex(from, obstacles)];
+        }
+        return calcUpperMove(from, obstacles);
+    }
+
+    private int calcUpperMove(int from, int obstacles) {
         int shiftedObstacles = obstacles >>> from + 1;
         if (shiftedObstacles == 0) {
             return SIZE - 1;
@@ -151,9 +183,13 @@ public class BitmaskRicochetState implements RicochetState {
 //        int shiftedObstacles = ((1 << SIZE) | obstacles) >>> from + 1;
 //        return from + Integer.numberOfTrailingZeros(shiftedObstacles);
 //    }
-
     @Override
     public int botSquare(int bot) {
         return botSquare[bot];
+    }
+
+    private int movesIndex(int from, int obstacles) {
+        assert (from & 0xf) == from : from;
+        return (from << SIZE) | (obstacles & 0xffff);
     }
 }

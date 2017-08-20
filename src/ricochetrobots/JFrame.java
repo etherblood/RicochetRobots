@@ -54,7 +54,9 @@ public class JFrame extends javax.swing.JFrame {
 
         RicochetState state = new BitmaskRicochetState();
 
-        Random rng = new Random();
+        long seed = System.currentTimeMillis();
+        System.out.println("used seed: " + seed);
+        Random rng = new Random(seed);
         Set<Integer> occupied = new HashSet<>();
         occupied.add(RicochetUtil.square(7, 7));
         occupied.add(RicochetUtil.square(7, 8));
