@@ -98,7 +98,8 @@ public class SimpleRicochetState implements RicochetState {
         return moveToWallMap[settings.squareDirectionIndex(square, direction)];
     }
 
-    int squareBot(int square) {
+    @Override
+    public int squareBot(int square) {
         return squareBot[square];
     }
 

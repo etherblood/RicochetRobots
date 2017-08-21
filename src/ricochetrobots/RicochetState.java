@@ -56,4 +56,13 @@ public interface RicochetState {
     int neighborBot(int square, int direction);
     
     RicochetStateSettings getSettings();
+
+    default int squareBot(int square) {
+        for (int bot = 0; bot < getSettings().getBotCount(); bot++) {
+            if(botSquare(bot) == square) {
+                return bot;
+            }
+        }
+        throw new IllegalStateException();
+    }
 }

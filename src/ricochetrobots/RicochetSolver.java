@@ -111,10 +111,10 @@ public class RicochetSolver {
         int dirs = availableDirections >>> (NUM_DIRECTIONS * currentBot);
         for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
             boolean prune = ((dirs >>> direction) & 1) == 0;
-//            if (((dirs >>> direction) & 1) == 0) {
-//                prunes++;
-//                continue;
-//            }
+            if (prune) {
+                prunes++;
+                continue;
+            }
             nonprunes++;
             int from = state.botSquare(currentBot);
             int to = state.findMoveLimit(from, direction);
@@ -130,12 +130,11 @@ public class RicochetSolver {
                 hash = childHash;
                 state.forceMove(currentBot, from, to);
 
-                int nextAvailableDirections = nextAvailableDirections(availableDirections, currentBot, direction, to);
+                int nextAvailableDirections = nextAvailableDirections(availableDirections, currentBot, direction, from, to);
                 boolean solved = search(remainingDepth - 1, nextAvailableDirections);
                 hash = prevHash;
                 state.forceMove(currentBot, to, from);//undo move
                 if (solved) {
-                    assert !prune;
                     result.add(0, new RicochetMove(currentBot, direction));
                     return true;
                 }
@@ -144,7 +143,7 @@ public class RicochetSolver {
         return false;
     }
 
-    private int nextAvailableDirections(int availableDirections, int movedBot, int movedDirection, int movedTo) {
+    private int nextAvailableDirections(int availableDirections, int movedBot, int movedDirection, int movedFrom, int movedTo) {
         if (!DIRECTION_PRUNING) {
             return ~0;
         }
@@ -153,6 +152,22 @@ public class RicochetSolver {
         int upperParallel = settings.invertDirection(lowerParallel);
         int upperOrthogonal = settings.invertDirection(lowerOrthogonal);
 
+        int directionOffset = settings.getDirectionOffset(movedDirection);
+        for (int sq = movedFrom; sq != movedTo; sq += directionOffset) {
+            if(state.findMoveLimit(sq, lowerOrthogonal) == sq) {
+                int upperNeighbor = state.neighborBot(sq, upperOrthogonal);
+                if(upperNeighbor != -1) {
+                    availableDirections |= 1 << (NUM_DIRECTIONS * upperNeighbor + lowerOrthogonal);
+                }
+            }
+            if(state.findMoveLimit(sq, upperOrthogonal) == sq) {
+                int lowerNeighbor = state.neighborBot(sq, lowerOrthogonal);
+                if(lowerNeighbor != -1) {
+                    availableDirections |= 1 << (NUM_DIRECTIONS * lowerNeighbor + upperOrthogonal);
+                }
+            }
+        }
+        
         int upperNeighbor = state.neighborBot(movedTo, upperOrthogonal);
         if (upperNeighbor != -1) {
             availableDirections |= 1 << (NUM_DIRECTIONS * upperNeighbor + lowerOrthogonal);
@@ -162,9 +177,9 @@ public class RicochetSolver {
             availableDirections |= 1 << (NUM_DIRECTIONS * lowerNeighbor + upperOrthogonal);
         }
         if(movedTo != state.findWall(movedTo, movedDirection)) {
-            int obstacleNeighbor = movedTo + settings.getDirectionOffset(movedDirection);
+            int obstacleNeighborSq = movedTo + settings.getDirectionOffset(movedDirection);
             int allDirections = (1 << NUM_DIRECTIONS) - 1;
-            availableDirections |= allDirections << (NUM_DIRECTIONS * obstacleNeighbor);
+            availableDirections |= allDirections << (NUM_DIRECTIONS * state.squareBot(obstacleNeighborSq));
         }
         int parallel = (1 << lowerParallel) | (1 << upperParallel);
         int orthogonal = (1 << lowerOrthogonal) | (1 << upperOrthogonal);
