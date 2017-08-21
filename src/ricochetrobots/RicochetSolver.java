@@ -13,7 +13,7 @@ import static ricochetrobots.RicochetStateSettings.*;
  */
 public class RicochetSolver {
 
-    private final static boolean VERBOSE = true, DIRECTION_PRUNING = false;
+    private final static boolean VERBOSE = true, LEAF_SEARCH = true;
 
     private List<RicochetMove> result;
     private final RicochetStateSettings settings;
@@ -83,19 +83,39 @@ public class RicochetSolver {
             return false;
         }
         if (remainingDepth == minTargetDistance) {
+            if (LEAF_SEARCH) {
+                return leafSearch(remainingDepth, state.botSquare(targetBot), availableDirections >>> (NUM_DIRECTIONS * targetBot));
+            }
             table.saveDepthIfEmpty(hash, remainingDepth);
             leafyNodes[remainingDepth]++;
             //target can only be reached by moving targetBot, if depth == 0 we already solved it
-            if (remainingDepth == 0 || searchBotMoves(targetBot, remainingDepth, availableDirections)) {
+            return remainingDepth == 0 || searchBotMoves(targetBot, remainingDepth, availableDirections);
+        }
+        table.saveDepth(hash, remainingDepth);
+        innerNodes[remainingDepth]++;
+        //normal search
+        for (int currentBot : botsOrder) {
+            if (searchBotMoves(currentBot, remainingDepth, availableDirections)) {
                 return true;
             }
-        } else {
-            table.saveDepth(hash, remainingDepth);
-            innerNodes[remainingDepth]++;
-            //normal search
-            for (int currentBot : botsOrder) {
-                if (searchBotMoves(currentBot, remainingDepth, availableDirections)) {
-                    return true;
+        }
+        return false;
+    }
+
+    private boolean leafSearch(int remainingDepth, int square, int availableDirections) {
+        leafyNodes[remainingDepth]++;
+        if (remainingDepth == 0) {
+            return true;
+        }
+        remainingDepth--;
+        for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
+            if (((availableDirections >>> direction) & 1) != 0) {
+                int to = state.findMoveLimit(square, direction);
+                if (targetDistance[to] == remainingDepth) {
+                    if (leafSearch(remainingDepth, to, 0xa >>> (direction & 1))) {
+                        result.add(0, new RicochetMove(targetBot, direction));
+                        return true;
+                    }
                 }
             }
         }
@@ -144,48 +164,57 @@ public class RicochetSolver {
     }
 
     private int nextAvailableDirections(int availableDirections, int movedBot, int movedDirection, int movedFrom, int movedTo) {
-        if (!DIRECTION_PRUNING) {
-            return ~0;
-        }
-        int lowerParallel = movedDirection & 1;
-        int lowerOrthogonal = settings.transposeDirection(lowerParallel);
-        int upperParallel = settings.invertDirection(lowerParallel);
-        int upperOrthogonal = settings.invertDirection(lowerOrthogonal);
+        switch (settings.getDirectionPruning()) {
+            case NONE:
+                return ~0;
+            case SIMPLE:
+                int mask = 0xaaaaaaaa >>> (movedDirection & 1);
+                availableDirections |= mask;
+                availableDirections &= ~((0xf & ~mask) << (NUM_DIRECTIONS * movedBot));
+                return availableDirections;
+            case COSTLY:
+                int lowerParallel = movedDirection & 1;
+                int lowerOrthogonal = settings.transposeDirection(lowerParallel);
+                int upperParallel = settings.invertDirection(lowerParallel);
+                int upperOrthogonal = settings.invertDirection(lowerOrthogonal);
 
-        int directionOffset = settings.getDirectionOffset(movedDirection);
-        for (int sq = movedFrom; sq != movedTo; sq += directionOffset) {
-            if(state.findMoveLimit(sq, lowerOrthogonal) == sq) {
-                int upperNeighbor = state.neighborBot(sq, upperOrthogonal);
-                if(upperNeighbor != -1) {
+                int directionOffset = settings.getDirectionOffset(movedDirection);
+                for (int sq = movedFrom; sq != movedTo; sq += directionOffset) {
+                    if (state.findMoveLimit(sq, lowerOrthogonal) == sq) {
+                        int upperNeighbor = state.neighborBot(sq, upperOrthogonal);
+                        if (upperNeighbor != -1) {
+                            availableDirections |= 1 << (NUM_DIRECTIONS * upperNeighbor + lowerOrthogonal);
+                        }
+                    }
+                    if (state.findMoveLimit(sq, upperOrthogonal) == sq) {
+                        int lowerNeighbor = state.neighborBot(sq, lowerOrthogonal);
+                        if (lowerNeighbor != -1) {
+                            availableDirections |= 1 << (NUM_DIRECTIONS * lowerNeighbor + upperOrthogonal);
+                        }
+                    }
+                }
+
+                int upperNeighbor = state.neighborBot(movedTo, upperOrthogonal);
+                if (upperNeighbor != -1) {
                     availableDirections |= 1 << (NUM_DIRECTIONS * upperNeighbor + lowerOrthogonal);
                 }
-            }
-            if(state.findMoveLimit(sq, upperOrthogonal) == sq) {
-                int lowerNeighbor = state.neighborBot(sq, lowerOrthogonal);
-                if(lowerNeighbor != -1) {
+                int lowerNeighbor = state.neighborBot(movedTo, lowerOrthogonal);
+                if (lowerNeighbor != -1) {
                     availableDirections |= 1 << (NUM_DIRECTIONS * lowerNeighbor + upperOrthogonal);
                 }
-            }
+                if (movedTo != state.findWall(movedTo, movedDirection)) {
+                    int obstacleNeighborSq = movedTo + settings.getDirectionOffset(movedDirection);
+                    int allDirections = (1 << NUM_DIRECTIONS) - 1;
+                    availableDirections |= allDirections << (NUM_DIRECTIONS * state.squareBot(obstacleNeighborSq));
+                }
+                int parallel = (1 << lowerParallel) | (1 << upperParallel);
+                int orthogonal = (1 << lowerOrthogonal) | (1 << upperOrthogonal);
+                availableDirections &= ~(parallel << (NUM_DIRECTIONS * movedBot));
+                availableDirections |= orthogonal << (NUM_DIRECTIONS * movedBot);
+                return availableDirections;
+            default:
+                throw new UnsupportedOperationException(settings.getDirectionPruning().toString());
         }
-        
-        int upperNeighbor = state.neighborBot(movedTo, upperOrthogonal);
-        if (upperNeighbor != -1) {
-            availableDirections |= 1 << (NUM_DIRECTIONS * upperNeighbor + lowerOrthogonal);
-        }
-        int lowerNeighbor = state.neighborBot(movedTo, lowerOrthogonal);
-        if (lowerNeighbor != -1) {
-            availableDirections |= 1 << (NUM_DIRECTIONS * lowerNeighbor + upperOrthogonal);
-        }
-        if(movedTo != state.findWall(movedTo, movedDirection)) {
-            int obstacleNeighborSq = movedTo + settings.getDirectionOffset(movedDirection);
-            int allDirections = (1 << NUM_DIRECTIONS) - 1;
-            availableDirections |= allDirections << (NUM_DIRECTIONS * state.squareBot(obstacleNeighborSq));
-        }
-        int parallel = (1 << lowerParallel) | (1 << upperParallel);
-        int orthogonal = (1 << lowerOrthogonal) | (1 << upperOrthogonal);
-        availableDirections &= ~(parallel << (NUM_DIRECTIONS * movedBot));
-        availableDirections |= orthogonal << (NUM_DIRECTIONS * movedBot);
-        return availableDirections;
     }
 
     private void populateTargetDistance(int targetSquare) {

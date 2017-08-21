@@ -12,13 +12,19 @@ public class RicochetStateSettings {
     public static final int NUM_DIRECTIONS = 4;
     public final static int EMPTY = -1;
 
+    private final DirectionPruning directionPruning;
     private final int botCount;
     private final int size;
     private final int[] directionOffsets = new int[NUM_DIRECTIONS];
 
     public RicochetStateSettings(int botCount, int size) {
+        this(botCount, size, DirectionPruning.SIMPLE);
+    }
+
+    public RicochetStateSettings(int botCount, int size, DirectionPruning directionPruning) {
         this.botCount = botCount;
         this.size = size;
+        this.directionPruning = directionPruning;
 
         directionOffsets[UP] = size;
         directionOffsets[LEFT] = -1;
@@ -69,6 +75,10 @@ public class RicochetStateSettings {
     
     public int getDirectionOffset(int direction) {
         return directionOffsets[direction];
+    }
+
+    public DirectionPruning getDirectionPruning() {
+        return directionPruning;
     }
 
 }
